@@ -527,6 +527,15 @@ DWORD GetProcPid(const wchar_t* exeName) {
     return PID_ILLEGAL;
 }
 
+HANDLE g_hProcess = INVALID_HANDLE_VALUE;
+HWND g_hWnd;
+
+DWORD WINAPI SynchronizeThread(void* params) {
+    ::WaitForSingleObject(g_hProcess, INFINITE);
+    ::PostMessage(g_hWnd, WM_QUIT, 0, 0);
+    return 0;
+}
+
 // Main code
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd)
 {
@@ -549,6 +558,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
     GetProcessVolume(pSessionEnumerator, pid, &level);
 
+    HANDLE hProcess = ::OpenProcess(SYNCHRONIZE, FALSE, pid);
+    g_hProcess = hProcess;
+
     // Make process DPI aware and obtain main monitor scale
     ImGui_ImplWin32_EnableDpiAwareness();
     float main_scale = ImGui_ImplWin32_GetDpiScaleForMonitor(::MonitorFromPoint(POINT{ 0, 0 }, MONITOR_DEFAULTTOPRIMARY));
@@ -563,6 +575,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         (int)(140 * main_scale), 
         nullptr, nullptr,
         wc.hInstance, nullptr);
+    g_hWnd = hwnd;
+
+    ::CreateThread(nullptr, 0, SynchronizeThread, nullptr, 0, nullptr);
 
     ImVector<const char*> extensions;
     extensions.push_back("VK_KHR_surface");
@@ -627,7 +642,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     init_info.CheckVkResultFn = check_vk_result;
     ImGui_ImplVulkan_Init(&init_info);
 
-
+    
     // Main loop
     bool done = false;
     while (!done)
@@ -644,6 +659,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         }
         if (done)
             break;
+
+        
 
         // Start the Dear ImGui frame
         ImGui_ImplVulkan_NewFrame();
