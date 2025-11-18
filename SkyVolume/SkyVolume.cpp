@@ -492,7 +492,8 @@ HRESULT SetProcessVolume(
         if (pPrevVol)
             *pPrevVol = level;
 
-        hr = pSessionSimpleVolume->SetMasterVolume(vol, nullptr);
+        if(level != vol)
+            hr = pSessionSimpleVolume->SetMasterVolume(vol, nullptr);
 
         if (FAILED(hr)) {
             break;
@@ -642,7 +643,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     init_info.CheckVkResultFn = check_vk_result;
     ImGui_ImplVulkan_Init(&init_info);
 
-    
+    float prev = level;
+
     // Main loop
     bool done = false;
     while (!done)
@@ -679,9 +681,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
             ImGui::SliderFloat("音量", &level, 0.0f, 1.0f, "%.2f");
             ImGui::Spacing();
             ImGui::TextDisabled("拖动滑块调整音量");
-            float prevLevel;
-            SetProcessVolume(pSessionEnumerator, pid, &prevLevel, level);
-            level = prevLevel;
+            if (prev != level)
+                SetProcessVolume(pSessionEnumerator, pid, &prev, level);
             ImGui::End();
         }
 
